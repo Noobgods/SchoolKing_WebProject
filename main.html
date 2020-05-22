@@ -1,0 +1,1440 @@
+<!DOCTYPE html>
+<HTML>
+
+<HEAD lang="ko">
+
+	<Title> Gambler </Title>
+
+	<head>
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<style>
+			html {
+				height: 100%;
+			}
+
+			body {
+				height: 100%;
+				background-image: url("./image/image_student.png");
+				background-size: 50%;
+				background-repeat: no-repeat;
+			}
+
+			.button {
+				border: 1x solid #ff0080;
+				/*---테두리 정의---*/
+				background-Color: rgba(255, 255, 255, 0.5);
+				/*--백그라운드 정의---*/
+				font: 40px 굴림;
+				/*--폰트 정의---*/
+				font-weight: bold;
+				/*--폰트 굵기---*/
+				color: black;
+				/*--폰트 색깔---*/
+				width: 130;
+				height: 30;
+				/*--버튼 크기---*/
+				text-align: center;
+				margin-left: 8%;
+				margin-top: 30%;
+			}
+
+			.button2 {
+				border: 1x solid #ff0080;
+				/*---테두리 정의---*/
+				background-Color: rgba(255, 255, 255, 0.5);
+				/*--백그라운드 정의---*/
+				font: 40px 굴림;
+				/*--폰트 정의---*/
+				font-weight: bold;
+				/*--폰트 굵기---*/
+				color: black;
+				/*--폰트 색깔---*/
+				width: 130;
+				height: 30;
+				/*--버튼 크기---*/
+				text-align: center;
+				margin-left: 10%;
+				margin-top: 0%;
+			}
+
+			canvas {
+				border: 1px solid #d3d3d3;
+				background-color: #f1f1f1;
+			}
+		</style>
+	</head>
+
+	<BODY>
+		<button id="button" class="button" onclick="button1_click();">학생 플레이</button>
+		<button id="button2" class="button2" onclick="button2_click();">교수 플레이</button>
+
+		<script>
+			function button1_click() {
+				init("STUDENT");
+				var button = document.getElementById('button').style.visibility = 'hidden';
+				var button2 = document.getElementById('button2').style.visibility = 'hidden';
+			}
+			function button2_click() {
+				init("PROFESSOR");
+				var button = document.getElementById('button').style.visibility = 'hidden';
+				var button2 = document.getElementById('button2').style.visibility = 'hidden';
+			}
+			//////////////////////////////////////////// 게임 구현 //////////////////////////////////////////////////////
+			/* 변수 선언 */
+			var hero;
+			var enemy;
+			var heroCard = [];
+			var enemyCard = [];
+			var tid;
+			var default_x = 860;
+			var default_y = 700;
+			var default_x2 = 180;
+			var turn = false;
+			var move_spell = false;
+			var effect_spell;
+			var spell_index;
+			var guide_massage;
+
+			/* 이미지 load */
+			var background = new Image();      /* 이미지 객체 생성 */
+			background.src = "./image/background.png";
+			var life_Img = new Image();
+			life_Img.src = "./image/life.png";
+			var endButton = new Image();
+			endButton.src = "./image/Turnend.png";
+			var heroturn_Img = new Image();
+			heroturn_Img.src = "./image/myturn.png";
+			var enemyturn_Img = new Image();
+			enemyturn_Img.src = "./image/enemyturn.png";
+			var cardback_Img = new Image();
+			cardback_Img.src = "./image/card_back.png";
+			var lose_Img = new Image();
+			lose_Img.src = "./image/lose.png";
+			var victory_Img = new Image();
+			victory_Img.src = "./image/victory.png";
+
+			/* 좌표 객체 */
+			function xyCood(bx, by) {
+				this.bx = bx;
+				this.by = by;
+			}
+
+			function xyBox(bx1, by1, bx2, by2) {
+				this.b1 = new xyCood(bx1, by1);
+				this.b2 = new xyCood(bx2, by2);
+			}
+
+			/* 카드 객체 */
+			function Card(bx, by, cardmotion, setStates, flip) {
+				this.bx = bx;
+				this.by = by;
+				this.hand_X = bx;
+				this.hand_Y = by;
+				this.inmotion = cardmotion;
+				this.states = setStates;
+				this.flip = flip;
+
+				this.card_image = new Image();
+
+				this.init = function (content) {
+					this.content = content;
+					this.type = content.cardtype;
+					this.loc = null;
+				}
+
+				this.draw = function () {
+					context = gameArea.context;
+					if (this.states == "FIELD" || flip) {
+						if (this.content.effect == "도발" && this.states == "FIELD") {
+							context.fillStyle = "#666666";
+							context.fillRect(this.bx - 6, this.by - 8, 132, 176);
+						}
+						context.drawImage(this.content.cardImg, this.bx, this.by, 120, 160);
+						if (this.type == "하수인") {
+							this.textPower = this.content.power.toString();
+							this.textLife = this.content.life.toString();
+							context.font = 20 + "px HY견고딕";
+							context.textAlign = "center";
+							context.fillStyle = "red";
+							context.fillText(this.textPower, this.bx + 20, this.by + 150);
+							context.fillStyle = "blue";
+							context.fillText(this.textLife, this.bx + 50, this.by + 150);
+						}
+					}
+					else {
+						context.drawImage(cardback_Img, this.bx, this.by, 120, 160);
+					}
+				}
+
+				this.detail = function () {
+					canvas = gameArea.canvas;
+					context = gameArea.context;
+					if (this.states == "FIELD" || flip) {
+						context.drawImage(this.content.cardImg, (canvas.width * 6) / 9, (canvas.height / 4.0), 300, 400);
+						if (this.type == "하수인") {
+							this.textPower = this.content.power.toString();
+							this.textLife = this.content.life.toString();
+							context.font = 30 + "px HY견고딕";
+							context.textAlign = "center";
+							context.fillStyle = "red";
+							context.fillText(this.textPower, (canvas.width * 6) / 9 + 40, (canvas.height / 4.0) + 370);
+							context.fillStyle = "blue";
+							context.fillText(this.textLife, (canvas.width * 6) / 9 + 100, (canvas.height / 4.0) + 370);
+						}
+					}
+				}
+
+				this.set_location = function (loc) {
+					this.loc = loc;
+				}
+			}
+
+			// 플레이어
+			var crystal = [];
+			crystal.push(new Image());
+			crystal[crystal.length - 1].src = "./image/Crystal_1.png";
+			crystal.push(new Image());
+			crystal[crystal.length - 1].src = "./image/Crystal_2.png";
+			crystal.push(new Image());
+			crystal[crystal.length - 1].src = "./image/Crystal_3.png";
+			crystal.push(new Image());
+			crystal[crystal.length - 1].src = "./image/Crystal_4.png";
+			crystal.push(new Image());
+			crystal[crystal.length - 1].src = "./image/Crystal_5.png";
+			crystal.push(new Image());
+			crystal[crystal.length - 1].src = "./image/Crystal_6.png";
+			crystal.push(new Image());
+			crystal[crystal.length - 1].src = "./image/Crystal_7.png";
+			crystal.push(new Image());
+			crystal[crystal.length - 1].src = "./image/Crystal_8.png";
+			crystal.push(new Image());
+			crystal[crystal.length - 1].src = "./image/Crystal_9.png";
+			crystal.push(new Image());
+			crystal[crystal.length - 1].src = "./image/Crystal_10.png";
+
+			function player(bx, by, user, deck) {
+				this.bx = bx;
+				this.by = by;
+				this.user = user;
+				this.decktype = deck;
+				this.player_Img = new Image();
+				this.init = function () {
+					if (this.decktype == "STUDENT")
+						this.player_Img.src = "./image/studentbook.png";
+
+					else if (this.decktype == "PROFESSOR")
+						this.player_Img.src = "./image/professorbook.png";
+
+					this.manacrystal = 0;
+					this.life = 30;
+				}
+				this.drawplayer = function () {
+					context = gameArea.context;
+					this.textlife = this.life.toString();
+					context.drawImage(this.player_Img, this.bx, this.by, 190, 266);
+
+					context.drawImage(life_Img, this.bx + 40, this.by + 170, 100, 100);
+
+					context.font = 40 + "px HY견고딕";
+					context.textAlign = "center";
+					context.fillStyle = "black";
+					context.fillText(this.textlife, this.bx + 90, this.by + 240);
+				}
+
+				this.manadraw = function (mx, my) {
+					context = gameArea.context;
+					for (i = 0; i < this.mana; i++) {
+						context.drawImage(crystal[i], mx, my, 50, 50);
+						mx += 45;
+					}
+				}
+
+				this.setmana = function () {
+					if (this.manacrystal < 10)
+						this.manacrystal += 1;
+					this.mana = this.manacrystal;
+				}
+				this.check_field = function (field) {
+					for (i = 0; i < 5; i++)
+						if (field[i].available)
+							return 1;
+					return 0;
+				}
+				this.check_shield = function () {
+					if (this.user == "HERO") {
+						for (var i = 0; i < heroCard.length; i++)
+							if (heroCard[i].states == "FIELD" && heroCard[i].content.effect == "도발")
+								return 1;
+					}
+					else if (this.user == "ENEMY") {
+						for (var i = 0; i < enemyCard.length; i++)
+							if (enemyCard[i].states == "FIELD" && enemyCard[i].content.effect == "도발")
+								return 1;
+					}
+					else return 0;
+				}
+			}
+			// 핸드 배열 ////////////////////////////////////////////////////////
+			var herohand = [];
+			var enemyhand = [];
+
+			function hand(id, bx, by, set) {
+				this.id = id;
+				this.bx = bx;
+				this.by = by;
+				this.available = set;
+			}
+
+			function hand_init() {
+				for (var i = 0; i < 8; i++) {
+					herohand.push(new hand(i, default_x, default_y, true));
+					enemyhand.push(new hand(i, default_x2, 0, true));
+					default_x += 40;
+					default_x2 += 40;
+				}
+			}
+			function hand_set(card, hand) {
+				for (i = 0; i < 8; i++) {
+					if (hand[i].available) {
+						hand[i].available = false;
+						card.bx = hand[i].bx;
+						card.by = hand[i].by;
+						card.hand_X = hand[i].bx;
+						card.hand_Y = hand[i].by;
+						card.set_location(hand[i]);
+						return 1;
+					}
+				}
+				return 0;
+			}
+
+			// 필드 배열 /////////////////////////////////////////////////////////
+			var battle_box = new xyBox(230, 220, 1170, 610);
+			var heroField = [];
+			heroField.push(new field(660, 465, true));
+			heroField.push(new field(520, 465, true));
+			heroField.push(new field(800, 465, true));
+			heroField.push(new field(380, 465, true));
+			heroField.push(new field(940, 465, true));
+
+			var enemyField = [];
+			enemyField.push(new field(660, 260, true));
+			enemyField.push(new field(520, 260, true));
+			enemyField.push(new field(800, 260, true));
+			enemyField.push(new field(380, 260, true));
+			enemyField.push(new field(940, 260, true));
+
+			// 필드 박스 객체
+			function field(bx, by, able) {
+				this.bx = bx;
+				this.by = by;
+				this.available = able;
+			}
+
+			// 비어있는 필드에 배치
+			function field_set(card, field) {
+				for (i = 0; i < 5; i++) {
+					if (field[i].available) {
+						field[i].available = false;
+						card.bx = field[i].bx;
+						card.by = field[i].by;
+						card.hand_X = field[i].bx;
+						card.hand_Y = field[i].by;
+						if (card.loc != null)
+							card.loc.available = true;
+						card.set_location(field[i]);
+						return 1;
+					}
+				}
+				return 0;
+			}
+
+			///////////////////////////////////////////////////////////////////////////////////////
+
+			// 백그라운드 그리기
+			function drawBackground() {
+				context = gameArea.context;
+				context.drawImage(background, 0, 0);
+				hero.drawplayer();
+				enemy.drawplayer();
+				context.drawImage(endButton, 400, 770, 200, 120);
+			}
+
+			// 화면 그리기
+			function drawall() {
+				canvas = gameArea.canvas;
+				context = gameArea.context;
+				context.clearRect(0, 0, 700, 437);
+				drawBackground();
+				hero.manadraw(850, 640);
+				enemy.manadraw(170, 180);
+				for (var i = 0; i < heroCard.length; i++) {
+					heroCard[i].draw();
+				}
+				for (var i = 0; i < enemyCard.length; i++) {
+					enemyCard[i].draw();
+				}
+				if (guide_massage != null) {
+					context.font = 50 + "px HY견고딕";
+					context.textAlign = "center";
+					context.fillStyle = "white";
+					context.fillText(guide_massage, canvas.width / 2, canvas.height / 2);
+				}
+				if (!hero_deck.length || hero.life <= 0) {
+					canvas.width = 554;
+					canvas.height = 418;
+					context.drawImage(lose_Img, 0, 0, 554, 418);
+				}
+				else if (!hero_deck.length || enemy.life <= 0) {
+					canvas.width = 554;
+					canvas.height = 418;
+					context.drawImage(victory_Img, 0, 0, 554, 418);
+				}
+			}
+
+			// 카드 드로우
+			function cardDraw(handCard, cardDeck, turnhand, flip) {
+				handCard.push(new Card(0, 0, false, "HAND", flip));
+				handCard[handCard.length - 1].init(cardDeck.pop());
+				if (hand_set(handCard[handCard.length - 1], turnhand)) { // 손패 정렬
+					handCard.sort(
+						function (left, right) {
+							if (left.states == "HAND" && right.states == "HAND")
+								return left.loc.id - right.loc.id;
+							else if (left.states == "FIELD")
+								return -1;
+							else if (right.states == "FIELD")
+								return 1;
+						});
+				}
+				else handCard.pop();
+			}
+			// 카드 효과
+			function cardEffect(card, user) {
+				if (card.content.effect == "드로우") {
+					if (user == hero)
+						cardDraw(heroCard, hero_deck, herohand, true);
+					if (user == enemy)
+						cardDraw(enemyCard, enemy_deck, enemyhand, false);
+				}
+				if (card.content.effect == "돌진") {
+					card.content.attackstate = true;
+				}
+				if (card.content.effect == "관통") {
+					card.content.penetration = true;
+				}
+				if (card.content.effect == "소프트학생회장") {
+					if (user == hero)
+						Eff_summonToken(heroCard, heroField, user, 2);
+					if (user == enemy)
+						Eff_summonToken(enemyCard, enemyField, user, 2);
+				}
+				if (card.content.effect == "학과장") {
+					if (user == enemy)
+						Eff_fieldDamage(heroCard, 2);
+					if (user == hero)
+						Eff_fieldDamage(enemyCard, 2);
+				}
+				if (card.content.effect == "학생회장") {
+					if (user == hero)
+						Eff_summonToken(heroCard, heroField, user, 5);
+					if (user == enemy)
+						Eff_summonToken(enemyCard, enemyField, user, 5);
+				}
+				if (card.content.effect == "1부여") {
+					if (user == hero)
+						if (hero.check_field(heroField)) {
+							move_spell = true;
+							effect_spell = "1부여";
+							guide_massage = "대상을 선택하세요.";
+						}
+					if (user == enemy)
+						for (i = 0; i < enemyCard.length; i++) {
+							if (enemyCard[i].states == "FIELD") {
+								enemyCard[i].content.power += 1;
+								enemyCard[i].content.life += 1;
+							}
+						}
+				}
+				if (card.content.effect == "레이저") {
+					if (user == hero)
+						if (hero.check_field(heroField)) {
+							move_spell = true;
+							effect_spell = "레이저";
+							guide_massage = "대상을 선택하세요.";
+						}
+					if (user == enemy)
+						for (i = 0; i < enemyCard.length; i++) {
+							if (enemyCard[i].states == "FIELD") {
+								enemyCard[i].content.power += 2;
+								break;
+							}
+						}
+				}
+				if (card.content.effect == "체크") {
+					if (user == hero) {
+						Eff_fieldDamage(enemyCard, 1);
+
+						move_spell = true;
+					}
+					else if (user == enemy)
+						Eff_fieldDamage(heroCard, 1);
+				}
+				if (card.content.effect == "축제") {
+					if (user == hero) {
+						hero.life += 8;
+						cardDraw(heroCard, hero_deck, herohand, true);
+						cardDraw(heroCard, hero_deck, herohand, true);
+						move_spell = true;
+					}
+					if (user == enemy) {
+						enemy.life += 8;
+						cardDraw(enemyCard, enemy_deck, enemyhand, false);
+						cardDraw(enemyCard, enemy_deck, enemyhand, false);
+					}
+				}
+				if (card.content.effect == "MT") {
+					if (user == hero) {
+						hero.life -= 3;
+						cardDraw(heroCard, hero_deck, herohand, true);
+						cardDraw(heroCard, hero_deck, herohand, true);
+						move_spell = true;
+					}
+					if (user == enemy) {
+						enemy.life -= 3;
+						cardDraw(enemyCard, enemy_deck, enemyhand, false);
+						cardDraw(enemyCard, enemy_deck, enemyhand, false);
+					}
+				}
+			}
+
+			function Eff_summonToken(cardEff, field, user, num) {
+				for (var i = 0; i < num; i++) {
+					if (user.check_field(field)) {
+						cardEff.push(new Card(0, 0, false, "HAND", true));
+
+						var length = cardEff.length - 1;
+						var token = new student_token(2, 2, "", 2);
+						token.imgload();
+						cardEff[length].init(token);
+
+						if (field_set(cardEff[length], field))
+							cardEff[length].states = "FIELD";
+					}
+				}
+			}
+			function Eff_fieldDamage(cardEff, num) {
+				for (var i = 0; i < cardEff.length; i++) {
+					if (cardEff[i].states == "FIELD")
+						cardEff[i].content.life -= num;
+					if (cardEff[i].content.life <= 0){
+						cardEff[i].loc.available = true;
+						cardEff.splice(i, 1);
+					}
+				}
+			}
+
+			/****************************************** 턴 제어 ******************************************/
+			function turnStart() {
+				canvas = gameArea.canvas;
+				context = gameArea.context;
+				if (turn) { // 상대턴 시작
+					context.drawImage(enemyturn_Img, (canvas.width / 2) - 262, (canvas.height / 2) - 114, 524, 229);
+					turn = false;
+					enemy.setmana();
+
+					for (var i = 0; i < enemyCard.length; i++)
+						if (enemyCard[i].states == "FIELD")
+							enemyCard[i].content.attackstate = true;
+
+					cardDraw(enemyCard, enemy_deck, enemyhand, false);
+
+					setTimeout(enemyTurn, 1000);
+				}
+				else {   // 나의턴 시작
+					context.drawImage(heroturn_Img, (canvas.width / 2) - 262, (canvas.height / 2) - 114, 524, 229);
+					turn = true;
+					hero.setmana();
+
+					for (var i = 0; i < heroCard.length; i++)
+						if (heroCard[i].states == "FIELD")
+							heroCard[i].content.attackstate = true;
+
+					cardDraw(heroCard, hero_deck, herohand, true);
+					setTimeout(drawall, 1000);
+				}
+			}
+
+			function turnEnd() {
+				if (turn) {
+				}
+				else {
+				}
+			}
+
+			// 상대턴 동작
+			var turn_time = 0;
+			function enemyTurn() {
+				tid = setInterval(turn_process, 500);
+
+				turnEnd();
+				setTimeout(turnStart, turn_time * 500);
+				turn_time = 0;
+			}
+
+			// 상대턴 동작 과정
+			function turn_process() {
+				var i = turn_time;
+				if (turn_time >= enemyCard.length)
+					clearInterval(tid);
+				else {
+					if (enemyCard[i].states == "HAND") {
+						if (enemy.mana >= enemyCard[i].content.cost) {
+							if (enemyCard[i].type == "마법" && enemyCard[i].content.effect == "레이저" && enemy.check_field(enemyField)) {
+								var time = 0;
+								var show = i;
+								var showtid = setInterval(function () {
+									if (time >= 10)
+										clearInterval(showtid);
+									context.drawImage(enemyCard[show].content.cardImg, (canvas.width * 6) / 9, (canvas.height / 4.0), 300, 400);
+									time++;
+								}, 100);
+
+								enemy.mana -= enemyCard[i].content.cost;
+								cardEffect(enemyCard[i], enemy);
+								setTimeout(function () {
+									enemyCard.splice(i, 1);
+								}, 1100);
+							}
+
+							else if (enemyCard[i].type == "마법" && enemyCard[i].content.effect == "체크" && enemy.check_field(enemyField)) {
+								var time = 0;
+								var show = i;
+								var showtid = setInterval(function () {
+									if (time >= 10)
+										clearInterval(showtid);
+									context.drawImage(enemyCard[show].content.cardImg, (canvas.width * 6) / 9, (canvas.height / 4.0), 300, 400);
+									time++;
+								}, 100);
+
+								enemy.mana -= enemyCard[i].content.cost;
+								cardEffect(enemyCard[i], enemy);
+								setTimeout(function () {
+									enemyCard.splice(i, 1);
+								}, 1100);
+							}
+
+							else if (enemyCard[i].type == "마법") {
+								var time = 0;
+								var show = i;
+								var showtid = setInterval(function () {
+									if (time >= 10)
+										clearInterval(showtid);
+									context.drawImage(enemyCard[show].content.cardImg, (canvas.width * 6) / 9, (canvas.height / 4.0), 300, 400);
+									time++;
+								}, 100);
+
+								enemy.mana -= enemyCard[i].content.cost;
+								cardEffect(enemyCard[i], enemy);
+								setTimeout(function () {
+									enemyCard.splice(i, 1);
+								}, 1100);
+							}
+
+							else if (enemyCard[i].type == "하수인") {
+								if (field_set(enemyCard[i], enemyField)) {
+									enemy.mana -= enemyCard[i].content.cost;
+									enemyCard[i].states = "FIELD";
+									cardEffect(enemyCard[i], enemy);
+								}
+							}
+						}
+					}
+					else if (enemyCard[i].states == "FIELD" && enemyCard[i].content.attackstate) {
+						for (var j = 0; j < enemyCard.length; j++) {
+							if (heroCard[j].states == "FIELD" &&
+								(!hero.check_shield() || heroCard[j].content.effect == "도발")) {
+								enemyCard[i].content.life -= heroCard[j].content.power;
+								heroCard[j].content.life -= enemyCard[i].content.power;
+								enemyCard[i].content.attackstate = false;
+								if (enemyCard[i].content.penetration) {
+									hero.life -= enemyCard[i].content.power;
+								}
+								attack_motion(heroCard, enemyCard, j, i);
+								break;
+							}
+							else if (!(hero.check_field(heroField))) {
+								hero.life -= enemyCard[i].content.power;
+								attack_player(hero, enemyCard[i]);
+								break;
+							}
+						}
+					}
+					turn_time++;
+					drawall();
+				}
+			}
+			/****************************************** 이펙트 ******************************************/
+			function attack_motion(target, attacker, j, i) {
+				var mx, my;
+				var move_time = 0;
+				mx = target[j].bx - attacker[i].bx;
+				my = target[j].by - attacker[i].by;
+				var attack_id = setInterval(function () {
+					if (move_time >= 10) {
+						attacker[i].bx = attacker[i].hand_X;
+						attacker[i].by = attacker[i].hand_Y;
+
+						if (target[j].content.life <= 0) {
+							target[j].loc.available = true;
+							target.splice(j, 1);
+						}
+						if (attacker[i].content.life <= 0) {
+							attacker[i].loc.available = true;
+							attacker.splice(i, 1);
+						}
+						clearInterval(attack_id);
+					}
+					else {
+						attacker[i].bx = attacker[i].bx + (mx / 15);
+						attacker[i].by = attacker[i].by + (my / 15);
+						move_time += 1;
+						drawall();
+					}
+				}, 20);
+
+				setTimeout(drawall, 300);
+			}
+			// 본체 공격
+			function attack_player(target, attacker) {
+				var mx, my;
+				var move_time = 0;
+				mx = target.bx - attacker.bx;
+				my = target.by - attacker.by;
+				var attack_id = setInterval(function () {
+					if (move_time >= 10) {
+						attacker.bx = attacker.hand_X;
+						attacker.by = attacker.hand_Y;
+
+						clearInterval(attack_id);
+					}
+					else {
+						attacker.bx = attacker.bx + (mx / 15);
+						attacker.by = attacker.by + (my / 15);
+						move_time += 1;
+						drawall();
+					}
+				}, 20);
+
+				setTimeout(drawall, 300);
+			}
+			/****************************************** 카드 동작 ******************************************/
+			function detail_card(card, mx, my) {
+				for (var i = card.length - 1; i >= 0; i--) {
+					if (card[i].bx + 120 > mx && card[i].bx < mx &&
+						card[i].by + 160 > my && card[i].by < my) {
+
+						card[i].detail();
+						break;
+					}
+				}
+			}
+			function detail(ev) {      // 카드 설명
+				var mx; var my;
+				if (ev.layerX || ev.layerX == 0) {        // 파이어폭스, 크롬
+					mx = ev.layerX; my = ev.layerY;
+				} else if (ev.offsetX || ev.offsetX == 0) { // 오페라
+					mx = ev.offsetX; my = ev.offsetY;
+				}
+
+				detail_card(heroCard, mx, my);
+				detail_card(enemyCard, mx, my);
+			}
+
+			function findobj(ev) {      // 카드 선택
+				var mx; var my;
+				if (ev.layerX || ev.layerX == 0) {        // 파이어폭스, 크롬
+					mx = ev.layerX; my = ev.layerY;
+				} else if (ev.offsetX || ev.offsetX == 0) { // 오페라
+					mx = ev.offsetX; my = ev.offsetY;
+				}
+
+				if (400 + 200 > mx && 400 < mx &&
+					770 + 120 > my && 770 < my && turn) {
+					turnEnd();
+					turnStart();
+				}
+				// 카드 선택
+				if (turn)
+					for (var i = heroCard.length - 1; i >= 0; i--) {
+						if (heroCard[i].bx + 120 > mx && heroCard[i].bx < mx &&
+							heroCard[i].by + 160 > my && heroCard[i].by < my && !move_spell) {
+							if (heroCard[i].type == "하수인") {
+								if (heroCard[i].states == "HAND")
+									heroCard[i].inmotion = true;
+								else if (heroCard[i].states == "FIELD" && heroCard[i].content.attackstate)
+									heroCard[i].inmotion = true;
+							}
+							else if (heroCard[i].type == "마법") {
+								heroCard[i].inmotion = true;
+							}
+							break;
+						}
+					}
+			}
+
+			function moveit(ev) {        // 마우스 이동
+				context = gameArea.context;
+				var mx; var my;
+				if (ev.layerX || ev.layerX == 0) {        // 파이어폭스
+					mx = ev.layerX; my = ev.layerY;
+				} else if (ev.offsetX || ev.offsetX == 0) { // 오페라
+					mx = ev.offsetX; my = ev.offsetY;
+				}
+				if (turn)
+					for (var i = 0; i < heroCard.length; i++) {
+						if (heroCard[i].inmotion) {
+							if (heroCard[i].states == "HAND") {   // 마우스 따라옴
+								heroCard[i].bx = mx - 60;
+								heroCard[i].by = my - 80;
+								drawall();
+							}
+							else if (heroCard[i].states == "FIELD" && heroCard[i].content.attackstate) { // 필드에 있을때 공격
+								drawall();
+								context.beginPath();
+								context.moveTo(heroCard[i].bx + 60, heroCard[i].by + 80);
+								context.lineTo(mx, my);
+								context.lineWidth = 3;
+								context.strokeStyle = "red";
+								context.stroke();
+							}
+						}
+					} effect_spell
+			}
+
+			function finish(ev) {
+				var mx; var my;
+				if (ev.layerX || ev.layerX == 0) {        // 파이어폭스, 크롬
+					mx = ev.layerX; my = ev.layerY;
+				} else if (ev.offsetX || ev.offsetX == 0) { // 오페라
+					mx = ev.offsetX; my = ev.offsetY;
+				}
+
+				if (turn)
+					for (var i = 0; i < heroCard.length; i++) {
+						if (heroCard[i].inmotion) {
+							// 손에 있을때 
+							if (heroCard[i].states == "HAND") {
+								if (battle_box.b1.bx < mx && battle_box.b2.bx > mx &&
+									battle_box.b1.by < my && battle_box.b2.by > my && hero.mana >= heroCard[i].content.cost) { // 필드로 들어가면
+									if (heroCard[i].type == "하수인") {
+										if (field_set(heroCard[i], heroField)) {    // 필드로
+											hero.mana -= heroCard[i].content.cost;
+											heroCard[i].states = "FIELD";
+
+											cardEffect(heroCard[i], hero);
+											drawall();
+										}
+										else { // 손패로 
+											heroCard[i].bx = heroCard[i].hand_X;
+											heroCard[i].by = heroCard[i].hand_Y;
+										}
+									}
+									else if (heroCard[i].type == "마법") {    // 마법 사용
+										effect_spell = cardEffect(heroCard[i], hero);
+										spell_index = i;
+									}
+								}
+								else {     // 손패로 
+									heroCard[i].bx = heroCard[i].hand_X;
+									heroCard[i].by = heroCard[i].hand_Y;
+								}
+							}
+
+							// 필드 공격
+							else if (heroCard[i].states == "FIELD" && heroCard[i].content.attackstate) {
+								for (var j = 0; j < enemyCard.length; j++) {
+									if (enemyCard[j].bx + 120 > mx && enemyCard[j].bx < mx &&
+										enemyCard[j].by + 160 > my && enemyCard[j].by < my &&
+										(!enemy.check_shield() || enemyCard[j].content.effect == "도발") &&
+										enemyCard[j].states == "FIELD") {
+
+										enemyCard[j].content.life = enemyCard[j].content.life - heroCard[i].content.power;
+										heroCard[i].content.life = heroCard[i].content.life - enemyCard[j].content.power;
+										heroCard[i].content.attackstate = false;
+										if (heroCard[i].content.penetration) {
+											enemy.life -= heroCard[i].content.power;
+										}
+										attack_motion(enemyCard, heroCard, j, i);
+									}
+								}
+								if (enemy.bx + 190 > mx && enemy.bx < mx &&
+									enemy.by + 266 > my && enemy.by < my &&
+									(!enemy.check_shield() || enemyCard[j].content.effect == "도발")) {
+									enemy.life -= heroCard[i].content.power;
+									attack_player(enemy, heroCard[i]);
+								}
+							}
+							drawall();
+							heroCard[i].inmotion = false;
+						}
+						if (move_spell && effect_spell == "1부여") {
+							if (heroCard[i].bx + 120 > mx && heroCard[i].bx < mx &&
+								heroCard[i].by + 160 > my && heroCard[i].by < my && heroCard[i].states == "FIELD") {
+								heroCard[i].content.power += 1;
+								heroCard[i].content.life += 1;
+								move_spell = false;
+								effect_spell = null;
+								guide_massage = null;
+							}
+							drawall();
+						}
+						else if (move_spell && effect_spell == "레이저") {
+							if (heroCard[i].bx + 120 > mx && heroCard[i].bx < mx &&
+								heroCard[i].by + 160 > my && heroCard[i].by < my && heroCard[i].states == "FIELD") {
+								heroCard[i].content.power += 2;
+								move_spell = false;
+								effect_spell = null;
+								guide_massage = null;
+								hero.mana -= heroCard[spell_index].content.cost;
+								heroCard.splice(spell_index, 1);
+							}
+							drawall();
+						}
+						else if (move_spell) {
+							move_spell = false;
+							effect_spell = null;
+							guide_massage = null;
+							hero.mana -= heroCard[spell_index].content.cost;
+							heroCard.splice(spell_index, 1);
+							drawall();
+						}
+					}
+			}
+			/*************************************************************************************************/
+			var gameArea = {
+				canvas: document.createElement("canvas"),
+				start: function () {
+					this.canvas.width = 1440;
+					this.canvas.height = 900;
+					this.context = this.canvas.getContext("2d");
+					document.body.insertBefore(this.canvas, document.body.childNodes[0]);
+					this.frameNo = 0;
+				},
+				clear: function () {
+					this.context.clearRect(0, 0, this.canvas.width, this.canvas.height);
+				}
+			}
+			function init(mode) {
+				gameArea.start();
+				canvas = gameArea.canvas;
+				deck_Shuffle(mode);
+				hand_init();
+				canvas.addEventListener('dblclick', detail, false);
+				canvas.addEventListener('mousedown', findobj, false);
+				canvas.addEventListener('mousemove', moveit, false);
+				canvas.addEventListener('mouseup', finish, false);
+
+				drawall();
+				turnStart();
+			}
+			/* TEST MASSAGE
+				var myDiv = document.getElementById("target");
+				myDiv.innerHTML = "x : " + mx + " y : " + my;
+			*/
+			//학생 ///////////////////////////////////////////////////////////////
+			function Type() { }
+
+			Type.prototype.attackstate = false; // 공격하면 false가 되도록
+			Type.prototype.penetration = false;
+			Type.prototype.cardtype = "하수인"; // 하수인카드임을 나타냄
+
+			function Type2() { }
+			Type2.prototype.cardtype = "마법";
+
+			// 하수인 --------------
+			function Student_president(power, life, effect, cost) // 총학생회장 카드 객체 (객체값 1)
+			{
+				this.power = power; // 숫자 (공격력)
+				this.life = life; // 숫자 (생명력)
+				this.effect = effect; // 한글 (효과)
+				this.cost = cost; // (코스트)
+				this.imgload = function () {
+					this.cardImg = new Image();
+					this.cardImg.src = "./image/Student_president.png";
+				}
+			}
+			Student_president.prototype = new Type();
+
+			function Freshman(power, life, effect, cost) // 신입생 카드 객체 (객체값 2)
+			{
+				this.power = power; // 숫자 (공격력)
+				this.life = life; // 숫자 (생명력)
+				this.effect = effect; // 한글 (효과)
+				this.cost = cost; // (코스트)
+
+				this.imgload = function () {
+					this.cardImg = new Image();
+					this.cardImg.src = "./image/Freshman.png";
+				}
+			}
+			Freshman.prototype = new Type();
+
+			function Returning_student(power, life, effect, cost) // 복학생 카드 객체 (객체값 3)
+			{
+				this.power = power; // 숫자 (공격력)
+				this.life = life; // 숫자 (생명력)
+				this.effect = effect; // 한글 (효과)
+				this.cost = cost; // (코스트)
+
+				this.imgload = function () {
+					this.cardImg = new Image();
+					this.cardImg.src = "./image/Returning_student.png";
+				}
+			}
+			Returning_student.prototype = new Type();
+
+			function Leave_student(power, life, effect, cost) // 휴학생 카드 객체 (객체 값 4)
+			{
+
+				this.power = power; // 숫자 (공격력)
+				this.life = life; // 숫자 (생명력)
+				this.effect = effect; // 한글 (효과)
+				this.cost = cost; // (코스트)
+
+				this.imgload = function () {
+					this.cardImg = new Image();
+					this.cardImg.src = "./image/Leave_student.png";
+				}
+			}
+			Leave_student.prototype = new Type();
+
+			function Graduate_student(power, life, effect, cost) // 졸업생 카드 객체 (객체 값 5)
+			{
+
+				this.power = power; // 숫자 (공격력)
+				this.life = life; // 숫자 (생명력)
+				this.effect = effect; // 한글 (효과)
+				this.cost = cost; // (코스트)
+
+				this.imgload = function () {
+					this.cardImg = new Image();
+					this.cardImg.src = "./image/Graduate_student.png";
+				}
+			}
+			Graduate_student.prototype = new Type();
+
+			function Free_life(power, life, effect, cost) // 자유로운 영혼 카드 객체 (객체 값 6)
+			{
+
+				this.power = power; // 숫자 (공격력)
+				this.life = life; // 숫자 (생명력)
+				this.effect = effect; // 한글 (효과)
+				this.cost = cost; // (코스트)
+
+				this.imgload = function () {
+					this.cardImg = new Image();
+					this.cardImg.src = "./image/Free_life.png";
+				}
+			}
+			Free_life.prototype = new Type();
+
+			function Club_president(power, life, effect, cost) // 동아리 회장 카드 객체 (객체 값 7)
+			{
+
+				this.power = power; // 숫자 (공격력)
+				this.life = life; // 숫자 (생명력)
+				this.effect = effect; // 한글 (효과)
+				this.cost = cost; // (코스트)
+
+				this.imgload = function () {
+					this.cardImg = new Image();
+					this.cardImg.src = "./image/Club_president.png";
+				}
+			}
+			Club_president.prototype = new Type();
+
+			function Class_president(power, life, effect, cost) // 과대 카드 객체 (객체 값 8)
+			{
+
+				this.power = power; // 숫자 (공격력)
+				this.life = life; // 숫자 (생명력)
+				this.effect = effect; // 한글 (효과)
+				this.cost = cost; // (코스트)
+
+				this.imgload = function () {
+					this.cardImg = new Image();
+					this.cardImg.src = "./image/Class_president.png";
+				}
+			}
+			Class_president.prototype = new Type();
+
+			function sub_Student_president(power, life, effect, cost) // 학생회장 카드 객체 (객체 값 9)
+			{
+
+				this.power = power; // 숫자 (공격력)
+				this.life = life; // 숫자 (생명력)
+				this.effect = effect; // 한글 (효과)
+				this.cost = cost; // (코스트)
+
+				this.imgload = function () {
+					this.cardImg = new Image();
+					this.cardImg.src = "./image/sub_Student_president.png";
+				}
+			}
+			sub_Student_president.prototype = new Type();
+
+			function Reservist(power, life, effect, cost) // 예비군 카드 객체 (객체 값 10)
+			{
+
+				this.power = power; // 숫자 (공격력)
+				this.life = life; // 숫자 (생명력)
+				this.effect = effect; // 한글 (효과)
+				this.cost = cost; // (코스트)
+
+				this.imgload = function () {
+					this.cardImg = new Image();
+					this.cardImg.src = "./image/Reservist.png";
+				}
+			}
+			Reservist.prototype = new Type();
+
+			function Rotc(power, life, effect, cost) // ROTC 카드 객체 (객체 값 11)
+			{
+
+				this.power = power; // 숫자 (공격력)
+				this.life = life; // 숫자 (생명력)
+				this.effect = effect; // 한글 (효과)
+				this.cost = cost; // (코스트)
+
+				this.imgload = function () {
+					this.cardImg = new Image();
+					this.cardImg.src = "./image/Rotc.png";
+				}
+			}
+			Rotc.prototype = new Type();
+
+			function student_token(power, life, effect, cost) {
+				this.power = power; // 숫자 (공격력)
+				this.life = life; // 숫자 (생명력)
+				this.effect = effect; // 한글 (효과)
+				this.cost = cost; // (코스트)
+
+				this.imgload = function () {
+					this.cardImg = new Image();
+					this.cardImg.src = "./image/Student_token.png";
+				}
+			}
+			student_token.prototype = new Type();
+
+			// 마법 ----------------
+
+			function festival(effect, cost) {
+				this.effect = effect; // 한글 (효과)
+				this.cost = cost; // (코스트)
+
+				this.imgload = function () {
+					this.cardImg = new Image();
+					this.cardImg.src = "./image/festival.png";
+				}
+			}
+			festival.prototype = new Type2();
+
+			function rest(effect, cost) {
+				this.effect = effect; // 한글 (효과)
+				this.cost = cost; // (코스트)
+
+				this.imgload = function () {
+					this.cardImg = new Image();
+					this.cardImg.src = "./image/rest.png";
+				}
+			}
+			rest.prototype = new Type2();
+
+			function mt(effect, cost) {
+				this.effect = effect; // 한글 (효과)
+				this.cost = cost; // (코스트)
+
+				this.imgload = function () {
+					this.cardImg = new Image();
+					this.cardImg.src = "./image/mt.png";
+				}
+			}
+			mt.prototype = new Type2();
+
+
+			// 교수 //////////////////////////////////////////////////////////////////////////////
+
+			function President(power, life, effect, cost) // 총장 카드 객체
+			{
+				this.power = power; // 숫자 (공격력)
+				this.life = life; // 숫자 (생명력)
+				this.effect = effect; // 한글 (효과)
+				this.cost = cost; // (코스트)
+
+				this.imgload = function () {
+					this.cardImg = new Image();
+					this.cardImg.src = "./image/President.png";
+				}
+			}
+			President.prototype = new Type();
+
+			function Assistant(power, life, effect, cost) // 조교 카드 객체
+			{
+				this.power = power; // 숫자 (공격력)
+				this.life = life; // 숫자 (생명력)
+				this.effect = effect; // 한글 (효과)
+				this.cost = cost; // (코스트)
+
+				this.imgload = function () {
+					this.cardImg = new Image();
+					this.cardImg.src = "./image/Assistant.png";
+				}
+			}
+			Assistant.prototype = new Type();
+
+			function Professor(power, life, effect, cost) // 교수 카드 객체
+			{
+				this.power = power; // 숫자 (공격력)
+				this.life = life; // 숫자 (생명력)
+				this.effect = effect; // 한글 (효과)
+				this.cost = cost; // (코스트)
+
+				this.imgload = function () {
+					this.cardImg = new Image();
+					this.cardImg.src = "./image/Professor.png";
+				}
+			}
+			Professor.prototype = new Type();
+
+			function Consortium(power, life, effect, cost) // 협력단 카드 객체
+			{
+				this.power = power; // 숫자 (공격력)
+				this.life = life; // 숫자 (생명력)
+				this.effect = effect; // 한글 (효과)
+				this.cost = cost; // (코스트)
+
+				this.imgload = function () {
+					this.cardImg = new Image();
+					this.cardImg.src = "./image/Consortium.png";
+				}
+			}
+			Consortium.prototype = new Type();
+
+			function Enterprise(power, life, effect, cost) // 사업단 카드 객체
+			{
+				this.power = power; // 숫자 (공격력)
+				this.life = life; // 숫자 (생명력)
+				this.effect = effect; // 한글 (효과)
+				this.cost = cost; // (코스트)
+
+				this.imgload = function () {
+					this.cardImg = new Image();
+					this.cardImg.src = "./image/Enterprise.png";
+				}
+			}
+			Enterprise.prototype = new Type();
+
+			function Researcher(power, life, effect, cost) // 연구원 카드 객체
+			{
+				this.power = power; // 숫자 (공격력)
+				this.life = life; // 숫자 (생명력)
+				this.effect = effect; // 한글 (효과)
+				this.cost = cost; // (코스트)
+
+
+				this.imgload = function () {
+					this.cardImg = new Image();
+					this.cardImg.src = "./image/Researcher.png";
+				}
+			}
+			Researcher.prototype = new Type();
+
+			function Librarian(power, life, effect, cost) // 도서관장 카드 객체
+			{
+				this.power = power; // 숫자 (공격력)
+				this.life = life; // 숫자 (생명력)
+				this.effect = effect; // 한글 (효과)
+				this.cost = cost; // (코스트)
+
+				this.imgload = function () {
+					this.cardImg = new Image();
+					this.cardImg.src = "./image/Librarian.png";
+				}
+			}
+			Librarian.prototype = new Type();
+
+			function Chair(power, life, effect, cost) // 학과장 카드 객체
+			{
+				this.power = power; // 숫자 (공격력)
+				this.life = life; // 숫자 (생명력)
+				this.effect = effect; // 한글 (효과)
+				this.cost = cost; // (코스트)
+
+				this.imgload = function () {
+					this.cardImg = new Image();
+					this.cardImg.src = "./image/Chair.png";
+				}
+			}
+			Chair.prototype = new Type();
+
+			function Postgraduate(power, life, effect, cost) // 대학원생 카드 객체
+			{
+				this.power = power; // 숫자 (공격력)
+				this.life = life; // 숫자 (생명력)
+				this.effect = effect; // 한글 (효과)
+				this.cost = cost; // (코스트)
+
+				this.imgload = function () {
+					this.cardImg = new Image();
+					this.cardImg.src = "./image/Postgraduate.png";
+				}
+			}
+			Postgraduate.prototype = new Type();
+
+			function Adviser(power, life, effect, cost) // 지도교수 카드 객체
+			{
+				this.power = power; // 숫자 (공격력)
+				this.life = life; // 숫자 (생명력)
+				this.effect = effect; // 한글 (효과)
+				this.cost = cost; // (코스트)
+
+
+				this.imgload = function () {
+					this.cardImg = new Image();
+					this.cardImg.src = "./image/Adviser.png";
+				}
+			}
+			Adviser.prototype = new Type();
+
+			// 마법 -------------
+
+			function check(effect, cost) {
+				this.effect = effect; // 한글 (효과)
+				this.cost = cost; // (코스트)
+
+				this.imgload = function () {
+					this.cardImg = new Image();
+					this.cardImg.src = "./image/check.png";
+				}
+			}
+			check.prototype = new Type2();
+
+			function homework(effect, cost) {
+				this.effect = effect; // 한글 (효과)
+				this.cost = cost; // (코스트)
+
+				this.imgload = function () {
+					this.cardImg = new Image();
+					this.cardImg.src = "./image/homework.png";
+				}
+			}
+			homework.prototype = new Type2();
+
+			function raiser(effect, cost) {
+				this.effect = effect; // 한글 (효과)
+				this.cost = cost; // (코스트)
+
+				this.imgload = function () {
+					this.cardImg = new Image();
+					this.cardImg.src = "./image/raiser.png";
+				}
+			}
+			raiser.prototype = new Type2();
+
+			// 학생 덱 /////////////////////////////////////////////////////////
+			var student_deck = [];
+			student_deck.push(new Student_president(8, 8, "학생회장", 10));
+			student_deck.push(new Freshman(1, 2, "드로우", 2));
+			student_deck.push(new Freshman(1, 2, "드로우", 2));
+			student_deck.push(new Freshman(1, 2, "드로우", 2));
+			student_deck.push(new Returning_student(3, 3, "", 2));
+			student_deck.push(new Returning_student(3, 3, "", 2));
+			student_deck.push(new Leave_student(3, 4, "", 3));
+			student_deck.push(new Graduate_student(3, 6, "관통", 4));
+			student_deck.push(new Graduate_student(3, 6, "관통", 4));
+			student_deck.push(new Graduate_student(3, 6, "관통", 4));
+			student_deck.push(new Free_life(1, 5, "", 3));
+			student_deck.push(new Free_life(1, 5, "", 3));
+			student_deck.push(new Club_president(5, 5, "도발", 4));
+			student_deck.push(new Club_president(5, 5, "도발", 4));
+			student_deck.push(new Class_president(3, 5, "", 3));
+			student_deck.push(new sub_Student_president(7, 7, "소프트학생회장", 7));
+			student_deck.push(new Reservist(4, 3, "돌진", 4));
+			student_deck.push(new Rotc(2, 3, "1부여", 3));
+			student_deck.push(new Rotc(2, 3, "1부여", 3));
+			student_deck.push(new festival("축제", 8));
+			student_deck.push(new mt("MT", 2));
+			student_deck.push(new mt("MT", 2));
+
+			//student_deck.push(new rest(0, 0, "", 2));
+			// 교수 덱 /////////////////////////////////////////////////////////
+			var professor_deck = [];
+			professor_deck.push(new President(12, 12, "", 10));
+			professor_deck.push(new Assistant(3, 1, "돌진", 2));
+			professor_deck.push(new Assistant(3, 1, "돌진", 2));
+			professor_deck.push(new Professor(3, 4, "도발", 3));
+			professor_deck.push(new Professor(3, 4, "도발", 3));
+			professor_deck.push(new Consortium(2, 4, "", 2));
+			professor_deck.push(new Consortium(2, 4, "", 2));
+			professor_deck.push(new Enterprise(3, 2, "", 2));
+			professor_deck.push(new Enterprise(3, 2, "", 2));
+			professor_deck.push(new Researcher(2, 3, "", 1));
+			professor_deck.push(new Researcher(2, 3, "", 1));
+			professor_deck.push(new Librarian(3, 3, "드로우", 4));
+			professor_deck.push(new Chair(6, 5, "학과장", 5));
+			professor_deck.push(new Postgraduate(3, 1, "드로우", 2));
+			professor_deck.push(new Postgraduate(3, 1, "드로우", 2));
+			professor_deck.push(new Adviser(4, 4, "관통", 4));
+			professor_deck.push(new raiser("레이저", 1));
+			professor_deck.push(new raiser("레이저", 1));
+			professor_deck.push(new check("체크", 2));
+			professor_deck.push(new check("체크", 2));
+
+			//professor_deck.push(new homework(0, 0, "", 2));
+			///////////////////////////////////////////////////////////////////
+			var hero_deck = [];
+			var hero_seed = [];
+			var enemy_deck = [];
+			var enemy_seed = [];
+
+			function deck_Shuffle(mode) {
+				// 학생 모드/////////////////////////////////////////////////
+				if (mode == "STUDENT") {
+					hero = new player(720 - 95, 629, "HERO", "STUDENT");
+					hero.init();
+					enemy = new player(720 - 95, 0, "ENEMY", "PROFESSOR");
+					enemy.init();
+					deck_select(hero_deck, student_deck, hero_seed);
+					deck_select(enemy_deck, professor_deck, enemy_seed);
+				}
+				// 교수 덱 셔플/////////////////////////////////////////////////
+				else if (mode == "PROFESSOR") {
+					hero = new player(720 - 95, 629, "HERO", "PROFESSOR");
+					hero.init();
+					enemy = new player(720 - 95, 0, "ENEMY", "STUDENT");
+					enemy.init();
+					deck_select(hero_deck, professor_deck, hero_seed);
+					deck_select(enemy_deck, student_deck, enemy_seed);
+				}
+			}
+			function deck_select(user, deck, randomSeed) {
+				for (i = 0; i < deck.length; i++) {
+					deck[i].imgload();
+					randomSeed.push(false);
+				}
+
+				var result;
+				for (i = 0; i < deck.length; i++) {
+					result = Math.floor(Math.random() * deck.length);
+					if (randomSeed[result]) i--;
+					else {
+						user.push(deck[result]);
+						randomSeed[result] = true;
+					}
+				}
+			}
+		</script>
+	</BODY>
+
+</HTML>
